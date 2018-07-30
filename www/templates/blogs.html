@@ -10,7 +10,7 @@
             <h2><a href="/blog/{{ blog.id }}">{{ blog.name }}</a></h2>
             <p class="uk-article-meta">发表于{{ blog.created_at|datetime }}</p>
             <p>{{ blog.summary }}</p>
-            <p><a href="/blog/{{ blog.id }}">继续阅读<i class="uk-icon-angle-double-right"></i></a></p>
+            <p><a href="/blog/{{ blog.id }}">继续阅读 <i class="uk-icon-angle-double-right"></i></a></p>
         </article>
         <hr class="uk-article-divider">
     {% endfor %}
@@ -20,8 +20,8 @@
         <div class="uk-panel uk-panel-header">
             <h3 class="uk-panel-title">友情链接</h3>
             <ul class="uk-list uk-list-line">
-                <li><i class="uk-icon-thumbs-o-up"></i><a target="_blank" href="#">编程</a></li>
-                <li><i class="uk-icon-thumbs-o-up"></i><a target="_blank" href="#">读书</a></li>
+                <li><i class="uk-icon-thumbs-o-up"></i><a target="_blank" href="#"> 编程</a></li>
+                <li><i class="uk-icon-thumbs-o-up"></i><a target="_blank" href="#"> 读书</a></li>
                 <li><i class="uk-icon-thumbs-o-up"></i><a target="_blank" href="#"> Python 教程</a></li>
                 <li><i class="uk-icon-thumbs-o-up"></i><a target="_blank" href="#"> Git 教程</a></li>
             </ul>
