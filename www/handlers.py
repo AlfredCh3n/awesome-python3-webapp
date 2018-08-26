@@ -5,11 +5,13 @@
 
 import re, time, json, logging, hashlib, base64, asyncio
 
+import markdown2
+
 from coreweb import get, post
 
 from models import User, Comment, Blog, next_id
 
-from apis import APIError, APIValueError, APIResourceNotFoundError, APIPermissionError
+from apis import Page, APIError, APIValueError, APIResourceNotFoundError, APIPermissionError
 
 from aiohttp import web
 
@@ -18,6 +20,58 @@ from config import configs
 COOKIE_NAME = 'awesession'
 _COOKIE_KEY = configs.session.secret
 
+#计算加密 cookie：
+def user2cookie(user, max_age):
+    #build cookie string by: id-expires-sha1
+    expires = str(int(time.time() + max_age))
+    s = '%s-%s-%s-%s' % (user.id, user.passwd, expires, _COOKIE_KEY)
+    L = [user.id, expires, hashlib.sha1(s.encode('utf-8')).hexdigest()]
+    return '-'.join(L)
+
+# 解密 cookie：
+async def cookie2user(cookie_str):
+    '''
+    Parse cookie and load user if cookie is valid.
+    '''
+    if not cookie_str:
+        return None
+    try:
+        L = cookie_str.split('-')
+        if len(L) != 3:
+            return None
+        uid, expires, sha1 = L
+        if int(expires) < time.time():
+            return None
+        user = await User.find(uid)
+        if user is None:
+            return None
+        s = '%s-%s-%s-%s' % (uid, user.passwd, expires, _COOKIE_KEY)
+        if sha1 != hashlib.sha1(s.encode('utf-8')).hexdigest():
+            logging.info('invalid sha1')
+            return None
+        user.passwd = '******'
+        return user
+    except Exception as e:
+        logging.exception(e)
+        return None
+
+def check_admin(request):
+    if request.__user__ is None or not request.__user__.admin:
+        raise APIPermissionError()
+
+def get_page_index(page_str):
+    p = 1
+    try:
+        p = int(page_str)
+    except ValueError as e:
+        pass
+    if p < 1:
+        p = 1
+    return p
+
+def text2html(text):
+    lines = map(lambda s: '<p>%s</p>' % s.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;'), filter(lambda s: s.strip() != '', text.split('\n')))
+    return ''.join(lines)
 
 @get('/')
 async def index(request):
@@ -109,44 +163,18 @@ async def authenticate(*, email, passwd):
     r.body = json.dumps(user, ensure_ascii=False).encode('utf-8')
     return r
 
-#计算加密 cookie：
-def user2cookie(user, max_age):
-    #build cookie string by: id-expires-sha1
-    expires = str(int(time.time() + max_age))
-    s = '%s-%s-%s-%s' % (user.id, user.passwd, expires, _COOKIE_KEY)
-    L = [user.id, expires, hashlib.sha1(s.encode('utf-8')).hexdigest()]
-    return '-'.join(L)
-
-# 解密 cookie：
-async def cookie2user(cookie_str):
-    '''
-    Parse cookie and load user if cookie is valid.
-    '''
-    if not cookie_str:
-        return None
-    try:
-        L = cookie_str.split('-')
-        if len(L) != 3:
-            return None
-        uid, expires, sha1 = L
-        if int(expires) < time.time():
-            return None
-        user = await user.find(uid)
-        if user is None:
-            return None
-        s = '%s-%s-%s-%s' % (uid, user.passwd, expires, _COOKIE_KEY)
-        if sha1 != hashlib.sha1(s.encode('utf-8')).hexdigest():
-            logging.info('invalid sha1')
-            return None
-        user.passwd = '******'
-        return user
-    except Exception as e:
-        logging.exception(e)
-        return None
-
-def check_admin(request):
-    if request.__user__ is None or not request.__user__.admin:
-        raise APIPermissionError()
+@get('/blog/{id}')
+async def get_blog(id):
+    blog = await Blog.find(id)
+    comments = await Comment.findAll('blog_id=?', [id], orderBy='created_at desc')
+    for c in comments:
+        c.html_content = text2html(c.content)
+    blog.html_content = markdown2.markdown(blog.content)
+    return {
+        '__template__': 'blog.html',
+        'blog': blog,
+        'comments': comments
+    }
 
 @post('/api/blogs')
 async def api_create_blog(request, *, name, summary, content):
@@ -161,4 +189,32 @@ async def api_create_blog(request, *, name, summary, content):
     await blog.save()
     return blog
 
+@get('/api/blogs')
+async def api_blogs(*, page='1'):
+    page_index = get_page_index(page)
+    num = await Blog.findNumber('count(id)')
+    p = Page(num, page_index)
+    if num == 0:
+        return dict(page=p, blogs=())
+    blogs = await Blog.findAll(orderBy='created_at desc', limit=(p.offset, p.limit))
+    return dict(page=p, blogs=blogs)
 
+@get('/manage/blogs')
+def manage_blogs(*, page='1'):
+    return {
+        '__template__': 'manage_blogs.html',
+        'page_index': get_page_index(page)
+    }
+
+@get('/manage/blogs/create')
+def manage_create_blog():
+    return {
+        '__template__': 'manage_blog_edit.html',
+        'id': '',
+        'action': '/api/blogs'
+    }
+
+@get('/api/blogs/{id}')
+async def api_get_blog(*, id):
+    blog = await Blog.find(id)
+    return blog

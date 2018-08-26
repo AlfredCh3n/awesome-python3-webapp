@@ -12,7 +12,8 @@
     <script src="/static/js/uikit.min.js"></script>
     <script src="/static/js/sticky.min.js"></script>
     <script src="/static/js/vue.min.js"></script>
-    <script src="/static/js/awesome.min.js"></script>
+    <script src="/static/js/awesome.js"></script>
+    <script src="/static/js/core.js"></script>
     {% block beforehead %}<!-- before head -->{% endblock %}
 </head>
 <body>
@@ -23,12 +24,15 @@
                 <li data-url="blogs"><a href="/"><i class="uk-icon-home"></i>日志</a></li>
                 <li><a target="_blank" href="#"><i class="uk-icon-book"></i>教程</a></li>
                 <li><a target="_blank" href="#"><i class="uk-icon-code"></i>源码</a></li>
+                {% if __user__.admin %}
+                    <li><a href="/manage/blogs"><i class="uk-icon-book"></i>管理</a></li>
+                {% endif %}
             </ul>
             <div class="uk-navbar-flip">
                 <ul class="uk-navbar-nav">
-                    {% if user %}
+                    {% if __user__ %}
                         <li class="uk-parent" data-uk-dropdown>
-                            <a href="#0"><i class="uk-icon-user"></i> {{ user.name }}</a>
+                            <a href="#0"><i class="uk-icon-user"></i> {{ __user__.name }}</a>
                             <dir class="uk-dropdown uk-dropdown-navbar">
                                 <ul class="uk-nav uk-vav-navbar">
                                     <li><a href="/signout"><i class="uk-icon-sign-out"></i>登出</a></li>
