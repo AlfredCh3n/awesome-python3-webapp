@@ -132,15 +132,15 @@ async def auth_factory(app, handler):
     return auth
 
 async def init(loop):
-    await orm.create_pool(loop=loop, host='127.0.0.1', port=3306, user='strawchen', password='116115', db='awesome')
+    await orm.create_pool(loop=loop, host='localhost', port=3306, user='root', password='116115', db='awesome')
     app = web.Application(loop=loop, middlewares=[
             logger_factory, response_factory, auth_factory
         ])
     init_jinja2(app, filters=dict(datetime=datatime_filter))
     add_routes(app, 'handlers')
     add_static(app)
-    srv = await loop.create_server(app.make_handler(), '127.0.0.1', 9000)
-    logging.info('sever started at http://127.0.0.1:9000...')
+    srv = await loop.create_server(app.make_handler(), 'localhost', 9000)
+    logging.info('sever started at http://localhost:9000...')
     return srv
 
 loop = asyncio.get_event_loop()
